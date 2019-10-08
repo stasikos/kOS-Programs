@@ -1,0 +1,68 @@
+WAIT UNTIL SHIP:UNPACKED.
+
+SET atmEdge TO SHIP:BODY:ATM:HEIGHT.
+SET AP TO atmEdge + 10000.
+SET PE TO AP.
+SET turnAlt TO 100.
+SET endTurnAlt TO 10000.
+SET engineISP TO 240.
+
+WAIT 30.
+
+// Start
+PRINT "Start".
+STAGE.
+LOCK STEERING TO HEADING(0, 90).
+
+WAIT UNTIL SHIP:ALTITUDE > turnAlt.
+PRINT "Start turning".
+LOCK angle TO 90 - (45 * SHIP:ALTITUDE / endTurnAlt).
+LOCK STEERING TO HEADING(90, angle).
+
+WAIT UNTIL SHIP:ALTITUDE > endTurnAlt.
+WAIT UNTIL SHIP:AVAILABLETHRUST < 1.
+PRINT "Stage separation".
+
+LOCK angle TO 90 - (90 * SHIP:ALTITUDE / (atmEdge - 10000)).
+STAGE.
+WAIT 2.
+
+PRINT "2-nd stage ignition".
+STAGE.
+WAIT UNTIL SHIP:AVAILABLETHRUST < 1.
+PRINT "Payload separation".
+
+STAGE.
+WAIT 2.
+SET RCS TO TRUE.
+PRINT "Payload Ignition".
+STAGE.
+
+LOCK STEERING TO SHIP:SRFPROGRADE.
+WAIT UNTIL SHIP:ALTITUDE > atmEdge.
+
+PRINT "In space, tuning apoapsis".
+LOCK STEERING TO SHIP:PROGRADE.
+WAIT UNTIL SHIP:APOAPSIS > AP.
+LOCK THROTTLE TO 0.
+PRINT "Ready for circularization (kinda)!".
+LOCK STEERING TO HEADING(90, 0).
+LOCK THROTTLE TO 1.
+//SET rAP TO AP + SHIP:BODY:RADIUS.
+//SET rPE TO PE + SHIP:BODY:RADIUS.
+
+//SET deltaV TO SQRT(SHIP:BODY:MU / rAP) * (1 - SQRT(2*rPE / (rPE + rAP))).
+//SET maneuver TO NODE(TIME:SECONDS + ETA:APOAPSIS, 0, 0, deltaV).
+//ADD maneuver.
+//LOCK STEERING to maneuver.
+
+//PRINT "Executing maneuver".
+//SET g TO 9.81.
+//SET burnTime TO g * (SHIP:MASS * 1000) * engineISP * (1 - CONSTANT:E ^ (-deltaV / (g * engineISP))) / (SHIP:AVAILABLETHRUST * 1000).
+//WAIT UNTIL maneuver:ETA < burnTime / 2.
+//LOCK THROTTLE TO 1.
+//WAIT UNTIL VDOT(deltaV, maneuver:DELTAV) < 0.5.
+WAIT UNTIL SHIP:AVAILABLETHRUST < 1.
+LOCK THROTTLE TO 0.
+PRINT "Done. Sorry if you are not in orbit :)".
+
