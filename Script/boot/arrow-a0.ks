@@ -24,12 +24,18 @@ SET controlDir TO 0.
 SET controlThrottle TO 0.
 
 SET mode TO MODE_PRELAUNCH.
+//SET mode TO MODE_CIRCULARIZE.
 
 SET startTime TO TIME:SECONDS.
 SET startTurnAltitude TO 0.
 SET fairingDeployed TO FALSE.
+SET payloadStage TO 0.
+SET atmosphericStage TO 1.
+
+SET g TO 9.81.
 
 UNTIL mode = MODE_STOP {
+	CLEARSCREEN.
 	IF (mode = MODE_PRELAUNCH) {
 		IF (TIME:SECONDS > countDownTime + startTime) {
 			SET mode TO MODE_LAUNCH.
@@ -74,7 +80,7 @@ UNTIL mode = MODE_STOP {
 		SET rPE TO targetPE + SHIP:BODY:RADIUS.
 
 		// Vis-Viva equatiion to get ship speed in current AP
-		SET vOrbital TO SQRT(SHIP:BODY:MU * (2 / SHIP:BODY:RADIUS + SHIP:BODY:APOAPSIS) - 1 / SHIP:ORBIT:SEMIMAJORAXIS)).
+		SET vOrbital TO SQRT(SHIP:BODY:MU * (2 / (SHIP:BODY:RADIUS + SHIP:ORBIT:APOAPSIS) - 1 / SHIP:ORBIT:SEMIMAJORAXIS)).
 		SET sMA TO (rAP + rPE) / 2.
 		SET vOrbitalNeeded TO SQRT(SHIP:BODY:MU * (2/rAP - 1/sMA)).
 		SET deltaV TO vOrbitalNeeded - vOrbital.
@@ -108,6 +114,7 @@ UNTIL mode = MODE_STOP {
 
 DECLARE FUNCTION printState {
 	PRINT "Mode: " + mode.
+	PRINT "Stage: " + STAGE:NUMBER.
 	PRINT "AP: " + SHIP:ORBIT:APOAPSIS + " PE: " + SHIP:ORBIT:PERIAPSIS.
 	PRINT "Pitch: " + controlPitch + " Dir: " + controlDir + " Roll: " + controlRoll.
 	Print "Throttle: " + controlThrottle.
@@ -115,7 +122,7 @@ DECLARE FUNCTION printState {
 
 DECLARE FUNCTION checkStage {
 	IF (mode > MODE_PRELAUNCH) {
-		IF(SHIP:AVAILABLETHRUST < 0.1) {
+		IF(SHIP:AVAILABLETHRUST < 0.1 AND STAGE:NUMBER > (atmosphericStage + 1)) {
 			STAGE.
 		}
 	}
@@ -123,7 +130,9 @@ DECLARE FUNCTION checkStage {
 
 DECLARE FUNCTION checkAtmosphere {
 	IF (SHIP:ALTITUDE > BODY:ATM:HEIGHT * 0.9 AND NOT fairingDeployed) {
-		STAGE. // to deploy fairing.
+		IF (STAGE:NUMBER > (payloadStage + 1)) {
+			STAGE. // to deploy fairing.
+		}
 		RCS ON.
 		SET fairingDeployed TO TRUE.
 	}
