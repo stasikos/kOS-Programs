@@ -10,6 +10,14 @@ SET savedAlt TO 0.
 SET savedSpeed TO 0.
 SET savedBearing TO 0.
 
+SET EDIT_ALT TO 0.
+SET EDIT_BEARING TO 1.
+
+SET editor TO FALSE.
+SET editorValue TO 0.
+SET editorIncrement TO 1.
+SET editorSelector TO 0. // 0 - Altitude; 1 - Bearing.
+
 SET altPID TO PIDLOOP(2, 0.01, 0.5).
 SET altPID:MAXOUTPUT TO maxPitch.
 SET altPID:MINOUTPUT TO -maxPitch.
@@ -18,7 +26,8 @@ SET pitchPID TO PIDLOOP(0.07, 0.02, 0.04).
 SET pitchPID:MAXOUTPUT TO 1.
 SET pitchPID:MINOUTPUT TO -1.
 
-SET dirPID TO PIDLOOP(0.6, 0.3, 0.075).
+//SET dirPID TO PIDLOOP(0.6, 0.3, 0.075).
+SET dirPID TO PIDLOOP(4.8, 0.3, 2.4).
 SET dirPID:SETPOINT TO 0.
 SET dirPID:MAXOUTPUT TO maxRoll.
 SET dirPID:MINOUTPUT TO -maxRoll.
@@ -47,8 +56,11 @@ UNTIL stop {
 			SET savedSpeed TO SHIP:AIRSPEED.
 			SET savedBearing TO myBearing.
 			SET savedState TO TRUE.
+			SAS OFF.
 		}
 		PRINT "Autopilot is Active".
+
+		valueEditor().
 
 		SET altPID:SETPOINT TO savedAlt.
 		SET altSignal TO altPID:UPDATE(TIME:SECONDS, realAlt).
@@ -82,6 +94,7 @@ UNTIL stop {
 		SET SHIP:CONTROL:NEUTRALIZE TO TRUE.
 		SET savedState TO FALSE.
 		PRINT "Autopilot is Not Active".
+		SAS ON.
 	}
 	
 	WAIT 0.001.
@@ -89,4 +102,73 @@ UNTIL stop {
 
 DECLARE FUNCTION realAlt {
 	return SHIP:ALTITUDE.
+}
+
+DECLARE FUNCTION valueEditor {
+
+	// w - increment value; s - decrement value
+	// a - multiplier increment ; d - multiplier decrement
+	// Also: select mode.
+	// q - exit; e - accept (also edit).
+
+	SET mode TO "unknown".
+
+	IF (editorSelector = EDIT_ALT) {
+		SET mode TO "altitude".
+	} ELSE IF (editorSelector = EDIT_BEARING) {
+		SET mode TO "bearing".
+	}
+
+	PRINT "Edit: " + mode.
+
+	IF (TERMINAL:INPUT:HASCHAR()) {
+		SET ch TO TERMINAL:INPUT:GETCHAR().
+		IF (ch = "e") {
+			IF (editor) {
+				IF (editorSelector = EDIT_ALT) {
+					SET savedAlt TO editorValue.
+				} ELSE IF (editorSelector = EDIT_BEARING) {
+					SET savedBearing TO editorValue.
+				}
+				SET editor TO FALSE.
+			} ELSE {
+				IF (editorSelector = EDIT_ALT) {
+					SET editorValue TO savedAlt.
+				} ELSE IF (editorSelector = EDIT_BEARING) {
+					SET editorValue TO savedBearing.
+				}
+				SET editor TO TRUE.
+			}
+		} ELSE IF (ch = "a") {
+			IF (editor) {
+				SET editorIncrement TO editorIncrement / 10.
+			} ELSE {
+				SET editorSelector TO editorSelector + 1.
+			}
+		} ELSE IF (ch = "d") {
+			IF (editor) {
+				SET editorIncrement TO editorIncrement * 10.
+			} ELSE {
+				SET editorSelector TO editorSelector + 1.
+			}
+		} ELSE IF (ch = "w" AND editor) {
+			SET editorValue TO editorValue + editorIncrement.
+		} ELSE IF (ch = "s" AND editor) {
+			SET editorValue TO editorValue - editorIncrement.
+		} ELSE IF (ch = "q") {
+			SET editor TO FALSE.
+		}
+	
+	}
+	
+	IF (editorSelector > EDIT_BEARING) {
+		SET editorSelector TO EDIT_ALT.
+	}
+	IF (editorSelector < 0) {
+		SET editorSelector TO EDIT_BEARING.
+	}
+
+	IF (editor) {
+		PRINT "Edit: " + editorValue + " increment " + editorIncrement.	
+	}
 }
